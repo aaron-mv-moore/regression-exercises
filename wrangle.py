@@ -77,6 +77,7 @@ def clean_data(df):
             c. Bedroom and Bathroom:
                 lower limit is 1
                 upper limit is Q3 + (1.5*IQR)
+        3. Change column names
     Returns: cleaned df
     Modules:
         1. import scipy.stats as stats
@@ -108,17 +109,35 @@ def clean_data(df):
                           'up_limit': Q3 + 1.5 * IQR
                          }
     
+    # for each cols
     for col in df:
+        
+        # if col in the dict key
         if col in outlier_limits:
+           
+            # remove all oservations that exceed upper limit
             df = df[(df[col] <= outlier_limits[col]['up_limit'])]
+            
+            # for all cols except these two
             if col not in ['bathroomcnt', 'bedroomcnt']:
+                
+                # remove all observations that are under the lower limit
                 df = df[(df[col] >= outlier_limits[col]['low_limit'])]
     
-    # drop zeros in bathroom and bedroom count
+    # drop observations with less than 1 bathroom or bedroom count
     df = df[df['bedroomcnt'] >= 1]
     df = df[df['bathroomcnt'] >= 1]
     
-    # exits function and returns cleaned df
+    # change columns names
+    df = df.rename(columns={'bedroomcnt': 'beds',
+                  'bathroomcnt': 'baths',
+                  'calculatedfinishedsquarefeet': 'square_feet',
+                  'taxvaluedollarcnt': 'tax_value',
+                   'yearbuilt': 'year_built',
+                   'taxamount': 'tax_amount'
+                  })
+    
+    # exit function with clean df
     return df
 
 
