@@ -63,12 +63,11 @@ def get_zillow_data():
         return df
 
 
-
 def clean_data(df):
     '''
     Arguments: zillow df
     Actions:
-        1. Drops null values
+        1. Change data types
         2. Removes outliers
             a. Fips is skipped
             b. Monetary and year variables: 
@@ -77,56 +76,55 @@ def clean_data(df):
             c. Bedroom and Bathroom:
                 lower limit is 1
                 upper limit is Q3 + (1.5*IQR)
-        3. Change column names
+        3. Drop nulls
+        4. Change column names
     Returns: cleaned df
     Modules:
         1. import scipy.stats as stats
         2. import pandas as pd
         3. import numpy as np
     '''
-    # drop null values
-    df = df.dropna()
     
-    # drop outliers
+    # changing data types
+    df['fips'] = df['fips'].astype(object)
+    df['yearbuilt'] = df['yearbuilt'].astype(object)
+    
+    # remove outliers
     # initialize dict
     outlier_limits = {}
     
     # for each column in df
     for col in df:
+        
         # skipping fips - this is a geographic indicator 
-        if col == 'fips':
-            pass
-        # for all other columns
-        else:
-            # get 3rd quartile 
-            Q3 = np.percentile(df[col], 75, interpolation = 'midpoint') 
+        if df[col].dtype != 'O':
             
-            # get the inter-quartile range
-            IQR = stats.iqr(df[col], interpolation = 'midpoint')
-           
+            # set quartiles
+            q1, q3 = df[col].quantile([.25, .75])
+            
+            # Set iqr 
+            iqr = q3 - q1
+
             # add to dictionary with the upper limits and lower limits
-            outlier_limits[col] =  {'low_limit': np.percentile(df[col], 5, interpolation = 'midpoint'), 
-                          'up_limit': Q3 + 1.5 * IQR
+            outlier_limits[col] =  {'low_limit_5': df[col].quantile(.05),
+                                    'low_limit':  q1 - 1.5 * iqr,
+                          'up_limit': q3 + 1.5 * iqr
                          }
-    
+
     # for each cols
     for col in df:
         
         # if col in the dict key
         if col in outlier_limits:
            
-            # remove all oservations that exceed upper limit
+            # remove all observations that exceed upper limit
             df = df[(df[col] <= outlier_limits[col]['up_limit'])]
             
-            # for all cols except these two
-            if col not in ['bathroomcnt', 'bedroomcnt']:
-                
-                # remove all observations that are under the lower limit
-                df = df[(df[col] >= outlier_limits[col]['low_limit'])]
+            # remove all observations that are below the lower limit
+            df = df[(df[col] >= outlier_limits[col]['low_limit'])]
     
-    # drop observations with less than 1 bathroom or bedroom count
-    df = df[df['bedroomcnt'] >= 1]
-    df = df[df['bathroomcnt'] >= 1]
+    # drop nulls
+    df = df.dropna()
     
     # change columns names
     df = df.rename(columns={'bedroomcnt': 'beds',
@@ -139,7 +137,6 @@ def clean_data(df):
     
     # exit function with clean df
     return df
-
 
 
 def split_data(df):
